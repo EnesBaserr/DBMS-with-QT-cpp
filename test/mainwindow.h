@@ -1,0 +1,39 @@
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+#include <QVBoxLayout>
+#include <QWidget>
+#include <QStackedWidget>
+#include <QLineEdit>
+#include <QPushButton>
+class MainWindow : public QWidget {
+    Q_OBJECT
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+
+public:
+    QStackedWidget* stackedWidget;
+    QVBoxLayout* managerLayout;
+    QVBoxLayout* coachLayout;
+    QVBoxLayout* juryLayout;
+    QVBoxLayout* playerLayout;
+    QPushButton* logoutButton;
+    QPushButton* logoutButton2;
+    QPushButton* logoutButton3;
+    QPushButton* logoutButton4;
+    QLineEdit* usernameInput;
+    QLineEdit* passwordInput;
+    void deleteMatchSession(const QString& sessionId);
+    void clearLayout(QLayout *layout);
+    void updateStadiumName(const QString& oldName, const QString& newName);
+    void showStadiums();
+    void setupCoachPage() ;
+    void setupManagerPage();
+    bool checkSomeCondition();  // Example condition checker
+    void navigatePages();
+    void setupJuryPage();
+    void showRatingsAndCount();
+    void submitRating(int sessionId, double rating);
+};
+
+#endif // MAINWINDOW_H
