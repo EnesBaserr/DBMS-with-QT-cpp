@@ -5,6 +5,13 @@
 #include <QStackedWidget>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QComboBox>
+#include <QDateEdit>
+#include <QDate>
+#include <QSqlDatabase>
+#include <QVector>
+#include <QScrollArea>
+
 class MainWindow : public QWidget {
     Q_OBJECT
 
@@ -15,6 +22,8 @@ public:
     QStackedWidget* stackedWidget;
     QVBoxLayout* managerLayout;
     QVBoxLayout* coachLayout;
+    QVBoxLayout *coachPageLayout;
+    QWidget *coachPageContent;
     QVBoxLayout* juryLayout;
     QVBoxLayout* playerLayout;
     QPushButton* logoutButton;
@@ -23,6 +32,10 @@ public:
     QPushButton* logoutButton4;
     QLineEdit* usernameInput;
     QLineEdit* passwordInput;
+    QSqlDatabase db;
+    QScrollArea *scrollArea;
+    QVector<QComboBox*> playerComboBoxes;
+    QVector<QComboBox*> positionComboBoxes;
     void deleteMatchSession(const QString& sessionId);
     void clearLayout(QLayout *layout);
     void updateStadiumName(const QString& oldName, const QString& newName);
@@ -34,6 +47,16 @@ public:
     void setupJuryPage();
     void showRatingsAndCount();
     void submitRating(int sessionId, double rating);
+    void setupPlayerPage();
+    void loadTeams(QComboBox* comboBox);
+    void loadStadiums(QComboBox* comboBox);
+    void loadJuries(QComboBox* comboBox);
+    void setupDateEdit(QDateEdit* dateEdit, const QString& currentCoachUsername);
+    void addMatchSession(const QString& teamId, const QDate& date, const QString& timeSlot, const QString& stadium, const QString& juryName);
+    void setupCoachSquadPage();
+    void loadSessionsForCoach(QComboBox* comboBox);
+    void loadPlayersForTeam(QComboBox* playerBox, QComboBox* positionBox, int position);
+    void submitSquad(const QString& sessionId);
 };
 
 #endif // MAINWINDOW_H
