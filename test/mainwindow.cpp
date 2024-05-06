@@ -19,10 +19,10 @@
 
 MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     // Create the stacked widget
-    this->setFixedSize(900, 900);
+    this->setFixedSize(900, 800);
 
     qDebug()<< QSqlDatabase::drivers();
-     db = QSqlDatabase::addDatabase("QMYSQL");
+    db = QSqlDatabase::addDatabase("QMYSQL");
     db.setPort(3306);  // Örnek olarak varsayılan MySQL port numarası
 
     db.setHostName("localhost");
@@ -76,17 +76,17 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
 
     loginLayout->addLayout(headerLayout);
     QPushButton* loginButton = new QPushButton("Login");
-     loginButton->setFixedSize(200, 50);
+    loginButton->setFixedSize(200, 50);
 
-       loginButton->setCursor(Qt::PointingHandCursor);
-     loginButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; border: none; border-radius: 5px; }"
-                                "QPushButton:hover { background-color: #2980b9;  }");
-       QLabel* loginLabel = new QLabel("Enter Username:");
-     QFont font2 = loginLabel->font();
-     font2.setPointSize(16);
-     font2.setBold(true);
-     loginLabel->setFont(font2);
-     loginLabel->setStyleSheet("QLabel { color : #2c3e50; }");
+    loginButton->setCursor(Qt::PointingHandCursor);
+    loginButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; border: none; border-radius: 5px; }"
+                               "QPushButton:hover { background-color: #2980b9;  }");
+    QLabel* loginLabel = new QLabel("Enter Username:");
+    QFont font2 = loginLabel->font();
+    font2.setPointSize(16);
+    font2.setBold(true);
+    loginLabel->setFont(font2);
+    loginLabel->setStyleSheet("QLabel { color : #2c3e50; }");
 
     loginLayout->addWidget(loginLabel);
     loginLayout->addWidget(usernameInput);
@@ -97,7 +97,7 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     passwordLabel->setFont(font2);
     passwordLabel->setStyleSheet("QLabel { color : #2c3e50; }");
     loginLayout->addWidget(passwordLabel);
-     passwordInput->setEchoMode(QLineEdit::Password);
+    passwordInput->setEchoMode(QLineEdit::Password);
     loginLayout->addWidget(passwordInput);
     loginLayout->addWidget(loginButton, 0, Qt::AlignCenter);
 
@@ -114,9 +114,9 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     stackedWidget->addWidget(welcomeCoach);
     // -------------- Jury
     QWidget* welcomeJury = new QWidget();
-    juryLayout = new QVBoxLayout(welcomeJury); 
+    juryLayout = new QVBoxLayout(welcomeJury);
     stackedWidget->addWidget(welcomeJury);
-   // -------------- Player
+    // -------------- Player
     QWidget* welcomePlayer = new QWidget();
     playerLayout = new QVBoxLayout(welcomePlayer);
     stackedWidget->addWidget(welcomePlayer);
@@ -323,8 +323,10 @@ void MainWindow::addMatchSession(const QString& teamId, const QDate& date, const
         QMessageBox::critical(this, "Error", "Failed to add session: " );
     } else {
         QMessageBox::information(this, "Success", "Match session added successfully.");
+        loadSessionsForCoach(sessionComboBox);
     }
 }
+
 
 void MainWindow::setupCoachPage() {
     coachPageContent = new QWidget();
@@ -373,6 +375,7 @@ void MainWindow::setupCoachPage() {
 
     connect(addButton, &QPushButton::clicked, [this, teamComboBox, dateEdit, timeSlotComboBox, stadiumComboBox, juryComboBox]() {
         addMatchSession(teamComboBox->currentText(), dateEdit->date(), timeSlotComboBox->currentText(), stadiumComboBox->currentText(), juryComboBox->currentText());
+        loadSessionsForCoach(sessionComboBox);
     });
 
     loadTeams(teamComboBox);
@@ -382,7 +385,7 @@ void MainWindow::setupCoachPage() {
     // -------------------------------------------
 
     QLabel* sessionLabel = new QLabel("Select a Session:");
-    QComboBox* sessionComboBox = new QComboBox();
+     sessionComboBox = new QComboBox();
     loadSessionsForCoach(sessionComboBox); // This will load session IDs managed by the coach
 
     coachPageLayout->addWidget(sessionLabel);
@@ -403,11 +406,11 @@ void MainWindow::setupCoachPage() {
 
     QPushButton* submitButton = new QPushButton("Submit Squad");
     coachPageLayout->addWidget(submitButton);
-    connect(submitButton, &QPushButton::clicked, [this, sessionComboBox]() {
-
-
-        submitSquad(sessionComboBox->currentText());
+    connect(submitButton, &QPushButton::clicked,  [this]() {
+        submitSquad(this->sessionComboBox->currentText());
+        loadSessionsForCoach(this->sessionComboBox);
     });
+
 
     // -----------------------------------------
     QLabel* deleteInstructionsLabel = new QLabel("Enter Session ID to delete match session:");
@@ -426,6 +429,8 @@ void MainWindow::setupCoachPage() {
             return;
         }
         deleteMatchSession(sessionId);
+        loadSessionsForCoach(this->sessionComboBox);
+
     });
     QPushButton *showStadiumsButton = new QPushButton("Show Stadiums");
     coachPageLayout->addWidget(showStadiumsButton);
@@ -444,6 +449,7 @@ void MainWindow::setupCoachPage() {
 
 void MainWindow::loadSessionsForCoach(QComboBox* comboBox) {
     QString currentCoachUsername = usernameInput->text();  // Assuming coach's username is stored
+    comboBox->clear();
     QSqlQuery query;
     query.prepare("SELECT session_id FROM matchsessions WHERE team_id IN (SELECT team_id FROM teams WHERE coach_username = :coach_username) AND session_id NOT IN (SELECT DISTINCT session_id FROM sessionsquad)");
     query.bindValue(":coach_username", currentCoachUsername);
@@ -497,7 +503,7 @@ WHERE t.coach_username = :coach_username
 }
 
 void MainWindow::submitSquad(const QString& sessionId) {
-   // Assuming default connection
+    // Assuming default connection
 
 
     if (!db.transaction()) {
@@ -564,7 +570,9 @@ void MainWindow::deleteMatchSession(const QString& sessionId) {
         deleteQuery.prepare("DELETE FROM matchsessions WHERE session_id = :sessionId");
         deleteQuery.bindValue(":sessionId", session_id_int);
         if (deleteQuery.exec()) {
+
             QMessageBox::information(this, "Deletion Successful", "Match session and all related data deleted successfully.");
+            loadSessionsForCoach(this->sessionComboBox);
         } else {
             QMessageBox::critical(this, "Deletion Failed", "Failed to delete the match session.");
         }
@@ -604,6 +612,8 @@ void MainWindow::showStadiums() {
     dialog->exec();
 }
 // Jury Related
+
+
 void MainWindow::setupJuryPage() {
     QPushButton *showRatingButton = new QPushButton("Show Rating avg. & count");
     juryLayout->addWidget(showRatingButton);
@@ -693,7 +703,15 @@ void MainWindow::submitRating(int sessionId, double rating) {
         QMessageBox::critical(this, "Submission Failed", QString("Failed to submit your rating"));
     }
 }
-void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality) {
+void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality, int position, int selectedTeamId) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty() ) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
+    if(height == 0.0 || weight == 0.0){
+        QMessageBox::critical(this, "Input Error", "Height and weight of the player cannot be zero or empty !");
+        return;
+    }
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
@@ -720,6 +738,51 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
         return;
     }
 
+    QSqlQuery getMaxIdQuery("SELECT MAX(player_positions_id) FROM playerpositions");
+    if (!getMaxIdQuery.exec() || !getMaxIdQuery.first()) {
+        QMessageBox::critical(this, "Database Error", "Failed to get max player_positions_id");
+        db.rollback();
+        return;
+    }
+    int maxId = getMaxIdQuery.value(0).toInt();
+
+    QSqlQuery query2;   // query for inserting into the position
+    query2.prepare(R"(
+        INSERT INTO playerpositions (player_positions_id, username, position_id) VALUES (:maxId, :username, :position)
+    )");
+    query2.bindValue(":maxId", maxId + 1);  // Increment maxId for the new player
+    query2.bindValue(":username", username);
+    query2.bindValue(":position", position);
+
+    if (!query2.exec()) {
+        QMessageBox::critical(this, "Database Error", "Failed to insert player position");
+        db.rollback();
+        return;
+    }
+
+
+    QSqlQuery getMaxTeamIdQuery("SELECT MAX(player_teams_id) FROM playerteams");
+    if (!getMaxTeamIdQuery.exec() || !getMaxTeamIdQuery.first()) {
+        QMessageBox::critical(this, "Database Error", "Failed to get max player_positions_id");
+        db.rollback();
+        return;
+    }
+    int maxTeamId = getMaxTeamIdQuery.value(0).toInt();
+
+    QSqlQuery query3;
+    query3.prepare(R"(
+        INSERT INTO playerteams (player_teams_id, username, team_id) VALUES (:maxTeamId, :username, :teamId)
+    )");
+    query3.bindValue(":maxTeamId", maxTeamId + 1);
+    query3.bindValue(":username", username);
+    query3.bindValue(":teamId", selectedTeamId);
+
+    if (!query3.exec()) {
+        QMessageBox::critical(this, "Database Error", "Failed to insert player team");
+        db.rollback();
+        return;
+    }
+
     db.commit();
     QMessageBox::information(this, "Success", "Player added successfully");
 
@@ -727,6 +790,10 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
 
 
 void MainWindow::addJury(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
@@ -764,10 +831,10 @@ void MainWindow::setupManagerPage() {
 
     QFont inputFont2("Arial", 12);
     QString inputStyle2 = "QLineEdit {"
-                         "   border: 2px solid #2F80ED;"
-                         "   border-radius: 5px;"
-                         "   padding: 5px;"
-                         "}";
+                          "   border: 2px solid #2F80ED;"
+                          "   border-radius: 5px;"
+                          "   padding: 5px;"
+                          "}";
     // Adding a label for the player section
     QLabel* addPlayerLabel = new QLabel("Add New Player:");
     addPlayerLabel->setFont(QFont("Arial", 14, QFont::Bold));
@@ -823,6 +890,43 @@ void MainWindow::setupManagerPage() {
     playerWeightInput->setStyleSheet(inputStyle2);
     managerPageLayout->addWidget(playerWeightInput);
 
+    QLabel *playerPositionLabel = new QLabel("Position of the player:");
+    playerPositionLabel->setFont(inputFont2);
+    playerPositionLabel->setStyleSheet(inputStyle2);
+    managerPageLayout->addWidget(playerPositionLabel);
+
+    QComboBox *playerPositionInput = new QComboBox();
+    playerPositionInput->setFont(inputFont2);
+    playerPositionInput->setStyleSheet(inputStyle2);
+    playerPositionInput->addItem("0");
+    playerPositionInput->addItem("1");
+    playerPositionInput->addItem("2");
+    playerPositionInput->addItem("3");
+    playerPositionInput->addItem("4");
+    managerPageLayout->addWidget(playerPositionInput);
+
+    QLabel *playerTeamLabel = new QLabel("Team of the player:");
+    playerTeamLabel->setFont(inputFont2);
+    playerTeamLabel->setStyleSheet(inputStyle2);
+    managerPageLayout->addWidget(playerTeamLabel);
+
+    QComboBox *playerTeamInput = new QComboBox();
+    playerTeamInput->setFont(inputFont2);
+    playerTeamInput->setStyleSheet(inputStyle2);
+
+    // teams tablosundan team_id ve team_name değerlerini al ve birleştirerek combo kutusuna ekle
+    QSqlQuery teamQuery("SELECT team_id, team_name FROM teams WHERE contract_finish >= CURRENT_DATE");
+    while (teamQuery.next()) {
+        int teamId = teamQuery.value(0).toInt();
+        QString teamName = teamQuery.value(1).toString();
+        QString teamIdName = QString("%1 - %2").arg(teamId).arg(teamName);
+        playerTeamInput->addItem(teamIdName);
+    }
+
+    managerPageLayout->addWidget(playerTeamInput);
+
+
+
     // Submit button for adding new player
     QPushButton* submitPlayerButton = new QPushButton("Add Player");
     submitPlayerButton->setStyleSheet(
@@ -845,46 +949,49 @@ void MainWindow::setupManagerPage() {
     managerPageLayout->addWidget(submitPlayerButton);
 
     // Connect the button's clicked signal to the slot that handles player creation
-    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerNationalityInput, playerDobEdit, playerHeightInput, playerWeightInput]() {
-        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(), "player", playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(), playerNationalityInput->text());
+    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerNationalityInput, playerDobEdit, playerHeightInput, playerWeightInput, playerPositionInput, playerTeamInput]() {
+        QString selectedTeamIdName = playerTeamInput->currentText();
+        QStringList teamIdNameList = selectedTeamIdName.split(" - ");
+        int selectedTeamId = teamIdNameList[0].toInt();
+        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(), "player", playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(), playerNationalityInput->text(), playerPositionInput->currentText().toInt(), selectedTeamId);
     });
 
     QLabel* addCoachLabel = new QLabel("Add New Coach:");
     addCoachLabel->setFont(QFont("Arial", 14, QFont::Bold));
 
-      managerPageLayout->addWidget(addCoachLabel);
+    managerPageLayout->addWidget(addCoachLabel);
 
     // Input fields for the coach's details
     QLineEdit* coachUsernameInput = new QLineEdit();
     coachUsernameInput->setPlaceholderText("Enter coach username");
     coachUsernameInput->setFont(inputFont2);
     coachUsernameInput->setStyleSheet(inputStyle2);
-      managerPageLayout->addWidget(coachUsernameInput);
+    managerPageLayout->addWidget(coachUsernameInput);
 
     QLineEdit* coachPasswordInput = new QLineEdit();
     coachPasswordInput->setPlaceholderText("Enter coach password");
     coachPasswordInput->setEchoMode(QLineEdit::Password);
     coachPasswordInput->setFont(inputFont2);
     coachPasswordInput->setStyleSheet(inputStyle2);
-      managerPageLayout->addWidget(coachPasswordInput);
+    managerPageLayout->addWidget(coachPasswordInput);
 
     QLineEdit* coachNameInput = new QLineEdit();
     coachNameInput->setPlaceholderText("Enter coach name");
     coachNameInput->setFont(inputFont2);
     coachNameInput->setStyleSheet(inputStyle2);
-      managerPageLayout->addWidget(coachNameInput);
+    managerPageLayout->addWidget(coachNameInput);
 
     QLineEdit* coachSurnameInput = new QLineEdit();
     coachSurnameInput->setPlaceholderText("Enter coach surname");
     coachSurnameInput->setFont(inputFont2);
     coachSurnameInput->setStyleSheet(inputStyle2);
-      managerPageLayout->addWidget(coachSurnameInput);
+    managerPageLayout->addWidget(coachSurnameInput);
 
     QLineEdit* coachNationalityInput = new QLineEdit();
     coachNationalityInput->setPlaceholderText("Enter coach nationality");
     coachNationalityInput->setFont(inputFont2);
     coachNationalityInput->setStyleSheet(inputStyle2);
-      managerPageLayout->addWidget(coachNationalityInput);
+    managerPageLayout->addWidget(coachNationalityInput);
 
 
 
@@ -927,39 +1034,39 @@ void MainWindow::setupManagerPage() {
     // Adding a label for section heading
     QLabel* addJuryLabel = new QLabel("Add New Jury:");
     addJuryLabel->setFont(QFont("Arial", 14, QFont::Bold));
-      managerPageLayout->addWidget(addJuryLabel);
+    managerPageLayout->addWidget(addJuryLabel);
 
     // Input fields for the jury's details
     QLineEdit* usernameInput = new QLineEdit();
     usernameInput->setPlaceholderText("Enter jury username");
     usernameInput->setFont(inputFont);
     usernameInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(usernameInput);
+    managerPageLayout->addWidget(usernameInput);
 
     QLineEdit* passwordInput = new QLineEdit();
     passwordInput->setPlaceholderText("Enter jury password");
     passwordInput->setEchoMode(QLineEdit::Password);
     passwordInput->setFont(inputFont);
     passwordInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(passwordInput);
+    managerPageLayout->addWidget(passwordInput);
 
     QLineEdit* nameInput = new QLineEdit();
     nameInput->setPlaceholderText("Enter jury name");
     nameInput->setFont(inputFont);
     nameInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(nameInput);
+    managerPageLayout->addWidget(nameInput);
 
     QLineEdit* surnameInput = new QLineEdit();
     surnameInput->setPlaceholderText("Enter jury surname");
     surnameInput->setFont(inputFont);
     surnameInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(surnameInput);
+    managerPageLayout->addWidget(surnameInput);
 
     QLineEdit* nationalityInput = new QLineEdit();
     nationalityInput->setPlaceholderText("Enter jury nationality");
     nationalityInput->setFont(inputFont);
     nationalityInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(nationalityInput);
+    managerPageLayout->addWidget(nationalityInput);
 
 
 
@@ -988,8 +1095,8 @@ void MainWindow::setupManagerPage() {
         "}"
         );
 
-      managerPageLayout->addWidget(submitJuryButton);
-      managerPageLayout->setSpacing(10);  // Adds spacing between widgets
+    managerPageLayout->addWidget(submitJuryButton);
+    managerPageLayout->setSpacing(10);  // Adds spacing between widgets
 
 
 
@@ -999,7 +1106,7 @@ void MainWindow::setupManagerPage() {
     });
     QLabel* instructionsLabel = new QLabel("Select a stadium and update its name:");
     instructionsLabel->setFont(QFont("Arial", 14, QFont::Bold));
-      managerPageLayout->addWidget(instructionsLabel);
+    managerPageLayout->addWidget(instructionsLabel);
 
     // ComboBox to display stadium names
     QComboBox* stadiumComboBox = new QComboBox();
@@ -1009,42 +1116,42 @@ void MainWindow::setupManagerPage() {
             stadiumComboBox->addItem(query.value(0).toString());
         }
     }
-      managerPageLayout->addWidget(stadiumComboBox);
+    managerPageLayout->addWidget(stadiumComboBox);
 
     // Input field for new stadium name
     QLineEdit* newNameInput = new QLineEdit();
     newNameInput->setPlaceholderText("Enter new stadium name");
     newNameInput->setFont(inputFont);
     newNameInput->setStyleSheet(inputStyle);
-      managerPageLayout->addWidget(newNameInput);
+    managerPageLayout->addWidget(newNameInput);
 
     // Button to update stadium name
     QPushButton* updateButton = new QPushButton("Update Stadium Name");
-      updateButton->setStyleSheet(
-          "QPushButton {"
-          "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #56CCF2, stop:1 #2F80ED);"
-          "   color: white;"
-          "   border: 2px solid #2F80ED;"
-          "   border-radius: 10px;"
-          "   padding: 5px;"
-          "   font-size: 16px;"
-          "   font-weight: bold;"
-          "}"
-          "QPushButton:hover {"
-          "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #2F80ED, stop:1 #56CCF2);"
-          "}"
-          "QPushButton:pressed {"
-          "   background-color: #2F80ED;"
-          "}"
-          ); // Reuse the coach button style
-      managerPageLayout->addWidget(updateButton);
+    updateButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #56CCF2, stop:1 #2F80ED);"
+        "   color: white;"
+        "   border: 2px solid #2F80ED;"
+        "   border-radius: 10px;"
+        "   padding: 5px;"
+        "   font-size: 16px;"
+        "   font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #2F80ED, stop:1 #56CCF2);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: #2F80ED;"
+        "}"
+        ); // Reuse the coach button style
+    managerPageLayout->addWidget(updateButton);
     QScrollArea *scrollArea = new QScrollArea();
     scrollArea->setWidgetResizable(true);
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scrollArea->setWidgetResizable(true);  // Make the scroll area content
-scrollArea->setWidget(managerPageContent);
-     managerLayout->addWidget(scrollArea);
+    scrollArea->setWidget(managerPageContent);
+    managerLayout->addWidget(scrollArea);
     connect(updateButton, &QPushButton::clicked, [this, stadiumComboBox, newNameInput]() {
         QString oldName = stadiumComboBox->currentText();
         QString newName = newNameInput->text();
@@ -1056,6 +1163,11 @@ scrollArea->setWidget(managerPageContent);
     });
 }
 void MainWindow::addCoach(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
+
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
