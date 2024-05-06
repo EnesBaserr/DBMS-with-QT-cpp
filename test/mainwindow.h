@@ -38,7 +38,7 @@ public:
     QScrollArea *scrollArea;
     QVector<QComboBox*> playerComboBoxes;
     QVector<QComboBox*> positionComboBoxes;
-    void addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality) ;
+    void addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality, int position, int selectedTeamId) ;
     void deleteMatchSession(const QString& sessionId);
     void clearLayout(QLayout *layout);
     void updateStadiumName(const QString& oldName, const QString& newName);

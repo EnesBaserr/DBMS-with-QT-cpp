@@ -19,16 +19,16 @@
 
 MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     // Create the stacked widget
-    this->setFixedSize(900, 900);
+    this->setFixedSize(900, 800);
 
     qDebug()<< QSqlDatabase::drivers();
      db = QSqlDatabase::addDatabase("QMYSQL");
     db.setPort(3306);  // Örnek olarak varsayılan MySQL port numarası
 
-    db.setHostName("localhost");
-    db.setDatabaseName("project3_test");
+    db.setHostName("127.0.0.1");
+    db.setDatabaseName("hw3");
     db.setUserName("root");
-    db.setPassword("admin");
+    db.setPassword("Mysql4052");
 
     db.open();
     if (!db.open()) {
@@ -604,6 +604,8 @@ void MainWindow::showStadiums() {
     dialog->exec();
 }
 // Jury Related
+
+
 void MainWindow::setupJuryPage() {
     QPushButton *showRatingButton = new QPushButton("Show Rating avg. & count");
     juryLayout->addWidget(showRatingButton);
@@ -693,7 +695,15 @@ void MainWindow::submitRating(int sessionId, double rating) {
         QMessageBox::critical(this, "Submission Failed", QString("Failed to submit your rating"));
     }
 }
-void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality) {
+void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality, int position, int selectedTeamId) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty() ) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
+    if(height == 0.0 || weight == 0.0){
+        QMessageBox::critical(this, "Input Error", "Height and weight of the player cannot be zero or empty !");
+        return;
+    }
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
@@ -720,6 +730,51 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
         return;
     }
 
+    QSqlQuery getMaxIdQuery("SELECT MAX(player_positions_id) FROM playerpositions");
+    if (!getMaxIdQuery.exec() || !getMaxIdQuery.first()) {
+        QMessageBox::critical(this, "Database Error", "Failed to get max player_positions_id");
+        db.rollback();
+        return;
+    }
+    int maxId = getMaxIdQuery.value(0).toInt();
+
+    QSqlQuery query2;   // query for inserting into the position
+    query2.prepare(R"(
+        INSERT INTO playerpositions (player_positions_id, username, position_id) VALUES (:maxId, :username, :position)
+    )");
+    query2.bindValue(":maxId", maxId + 1);  // Increment maxId for the new player
+    query2.bindValue(":username", username);
+    query2.bindValue(":position", position);
+
+    if (!query2.exec()) {
+        QMessageBox::critical(this, "Database Error", "Failed to insert player position");
+        db.rollback();
+        return;
+    }
+
+
+    QSqlQuery getMaxTeamIdQuery("SELECT MAX(player_teams_id) FROM playerteams");
+    if (!getMaxTeamIdQuery.exec() || !getMaxTeamIdQuery.first()) {
+        QMessageBox::critical(this, "Database Error", "Failed to get max player_positions_id");
+        db.rollback();
+        return;
+    }
+    int maxTeamId = getMaxTeamIdQuery.value(0).toInt();
+
+    QSqlQuery query3;
+    query3.prepare(R"(
+        INSERT INTO playerteams (player_teams_id, username, team_id) VALUES (:maxTeamId, :username, :teamId)
+    )");
+    query3.bindValue(":maxTeamId", maxTeamId + 1);
+    query3.bindValue(":username", username);
+    query3.bindValue(":teamId", selectedTeamId);
+
+    if (!query3.exec()) {
+        QMessageBox::critical(this, "Database Error", "Failed to insert player team");
+        db.rollback();
+        return;
+    }
+
     db.commit();
     QMessageBox::information(this, "Success", "Player added successfully");
 
@@ -727,6 +782,10 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
 
 
 void MainWindow::addJury(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
@@ -823,6 +882,43 @@ void MainWindow::setupManagerPage() {
     playerWeightInput->setStyleSheet(inputStyle2);
     managerPageLayout->addWidget(playerWeightInput);
 
+    QLabel *playerPositionLabel = new QLabel("Position of the player:");
+    playerPositionLabel->setFont(inputFont2);
+    playerPositionLabel->setStyleSheet(inputStyle2);
+    managerPageLayout->addWidget(playerPositionLabel);
+
+    QComboBox *playerPositionInput = new QComboBox();
+    playerPositionInput->setFont(inputFont2);
+    playerPositionInput->setStyleSheet(inputStyle2);
+    playerPositionInput->addItem("0");
+    playerPositionInput->addItem("1");
+    playerPositionInput->addItem("2");
+    playerPositionInput->addItem("3");
+    playerPositionInput->addItem("4");
+    managerPageLayout->addWidget(playerPositionInput);
+
+    QLabel *playerTeamLabel = new QLabel("Team of the player:");
+    playerTeamLabel->setFont(inputFont2);
+    playerTeamLabel->setStyleSheet(inputStyle2);
+    managerPageLayout->addWidget(playerTeamLabel);
+
+    QComboBox *playerTeamInput = new QComboBox();
+    playerTeamInput->setFont(inputFont2);
+    playerTeamInput->setStyleSheet(inputStyle2);
+
+    // teams tablosundan team_id ve team_name değerlerini al ve birleştirerek combo kutusuna ekle
+    QSqlQuery teamQuery("SELECT team_id, team_name FROM teams WHERE contract_finish >= CURRENT_DATE");
+    while (teamQuery.next()) {
+        int teamId = teamQuery.value(0).toInt();
+        QString teamName = teamQuery.value(1).toString();
+        QString teamIdName = QString("%1 - %2").arg(teamId).arg(teamName);
+        playerTeamInput->addItem(teamIdName);
+    }
+
+    managerPageLayout->addWidget(playerTeamInput);
+
+
+
     // Submit button for adding new player
     QPushButton* submitPlayerButton = new QPushButton("Add Player");
     submitPlayerButton->setStyleSheet(
@@ -845,8 +941,11 @@ void MainWindow::setupManagerPage() {
     managerPageLayout->addWidget(submitPlayerButton);
 
     // Connect the button's clicked signal to the slot that handles player creation
-    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerNationalityInput, playerDobEdit, playerHeightInput, playerWeightInput]() {
-        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(), "player", playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(), playerNationalityInput->text());
+    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerNationalityInput, playerDobEdit, playerHeightInput, playerWeightInput, playerPositionInput, playerTeamInput]() {
+        QString selectedTeamIdName = playerTeamInput->currentText();
+        QStringList teamIdNameList = selectedTeamIdName.split(" - ");
+        int selectedTeamId = teamIdNameList[0].toInt();
+        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(), "player", playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(), playerNationalityInput->text(), playerPositionInput->currentText().toInt(), selectedTeamId);
     });
 
     QLabel* addCoachLabel = new QLabel("Add New Coach:");
@@ -1056,6 +1155,11 @@ scrollArea->setWidget(managerPageContent);
     });
 }
 void MainWindow::addCoach(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+        QMessageBox::critical(this, "Input Error", "All fields must be filled");
+        return;
+    }
+
     if (!db.transaction()) {
         QMessageBox::critical(this, "Database Error", "Failed to start transaction");
         return;
