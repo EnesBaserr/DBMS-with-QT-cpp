@@ -24,6 +24,8 @@ public:
     QVBoxLayout* coachLayout;
     QVBoxLayout *coachPageLayout;
     QWidget *coachPageContent;
+    QVBoxLayout *managerPageLayout;
+    QWidget *managerPageContent;
     QVBoxLayout* juryLayout;
     QVBoxLayout* playerLayout;
     QPushButton* logoutButton;
@@ -36,6 +38,7 @@ public:
     QScrollArea *scrollArea;
     QVector<QComboBox*> playerComboBoxes;
     QVector<QComboBox*> positionComboBoxes;
+    void addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality) ;
     void deleteMatchSession(const QString& sessionId);
     void clearLayout(QLayout *layout);
     void updateStadiumName(const QString& oldName, const QString& newName);
@@ -47,6 +50,7 @@ public:
     void navigatePages();
     void setupJuryPage();
     void showRatingsAndCount();
+    void addCoach(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QString& nationality) ;
     void submitRating(int sessionId, double rating);
     void setupPlayerPage();
     void loadTeams(QComboBox* comboBox);
