@@ -693,7 +693,118 @@ void MainWindow::submitRating(int sessionId, double rating) {
         QMessageBox::critical(this, "Submission Failed", QString("Failed to submit your rating"));
     }
 }
+void MainWindow::addJury(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
+    if (!db.transaction()) {
+        QMessageBox::critical(this, "Database Error", "Failed to start transaction");
+        return;
+    }
+
+    QSqlQuery query;
+    query.prepare(R"(
+        INSERT INTO users (username, password, name, surname, user_type,  nationality)
+        VALUES (:username, :password, :name, :surname, :userType, :nationality)
+    )");
+
+    query.bindValue(":username", username);
+    query.bindValue(":password", password);
+    query.bindValue(":name", name);
+    query.bindValue(":surname", surname);
+    query.bindValue(":userType", userType);
+
+
+    query.bindValue(":nationality", nationality);
+
+    if (!query.exec()) {
+        QMessageBox::critical(this, "Database Error", "Failed to insert jury: " );
+        db.rollback();
+        return;
+    }
+
+    db.commit();
+    QMessageBox::information(this, "Success", "Jury added successfully");
+}
+
 void MainWindow::setupManagerPage() {
+    QFont inputFont("Arial", 12);
+    QString inputStyle = "QLineEdit {"
+                         "   border: 2px solid #2F80ED;"
+                         "   border-radius: 5px;"
+                         "   padding: 5px;"
+                         "}";
+
+    // Adding a label for section heading
+    QLabel* addJuryLabel = new QLabel("Add New Jury:");
+    addJuryLabel->setFont(QFont("Arial", 14, QFont::Bold));
+    managerLayout->addWidget(addJuryLabel);
+
+    // Input fields for the jury's details
+    QLineEdit* usernameInput = new QLineEdit();
+    usernameInput->setPlaceholderText("Enter jury username");
+    usernameInput->setFont(inputFont);
+    usernameInput->setStyleSheet(inputStyle);
+    managerLayout->addWidget(usernameInput);
+
+    QLineEdit* passwordInput = new QLineEdit();
+    passwordInput->setPlaceholderText("Enter jury password");
+    passwordInput->setEchoMode(QLineEdit::Password);
+    passwordInput->setFont(inputFont);
+    passwordInput->setStyleSheet(inputStyle);
+    managerLayout->addWidget(passwordInput);
+
+    QLineEdit* nameInput = new QLineEdit();
+    nameInput->setPlaceholderText("Enter jury name");
+    nameInput->setFont(inputFont);
+    nameInput->setStyleSheet(inputStyle);
+    managerLayout->addWidget(nameInput);
+
+    QLineEdit* surnameInput = new QLineEdit();
+    surnameInput->setPlaceholderText("Enter jury surname");
+    surnameInput->setFont(inputFont);
+    surnameInput->setStyleSheet(inputStyle);
+    managerLayout->addWidget(surnameInput);
+
+    QLineEdit* nationalityInput = new QLineEdit();
+    nationalityInput->setPlaceholderText("Enter jury nationality");
+    nationalityInput->setFont(inputFont);
+    nationalityInput->setStyleSheet(inputStyle);
+    managerLayout->addWidget(nationalityInput);
+
+
+
+
+
+
+
+
+    // Submit button for adding new jury
+    QPushButton* submitJuryButton = new QPushButton("Add Jury");
+    submitJuryButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #56CCF2, stop:1 #2F80ED);"
+        "   color: white;"
+        "   border: 2px solid #2F80ED;"
+        "   border-radius: 10px;"
+        "   padding: 5px;"
+        "   font-size: 16px;"
+        "   font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #2F80ED, stop:1 #56CCF2);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: #2F80ED;"
+        "}"
+        );
+
+    managerLayout->addWidget(submitJuryButton);
+    managerLayout->setSpacing(10);  // Adds spacing between widgets
+
+
+
+    // Connect the button's clicked signal to the slot that handles jury creation
+    connect(submitJuryButton, &QPushButton::clicked, [this, usernameInput, passwordInput, nameInput, surnameInput, nationalityInput]() {
+        addJury(usernameInput->text(), passwordInput->text(), nameInput->text(), surnameInput->text(), "jury",  nationalityInput->text());
+    });
     QLabel* instructionsLabel = new QLabel("Select a stadium and update its name:");
     managerLayout->addWidget(instructionsLabel);
 
@@ -749,7 +860,9 @@ void MainWindow::navigatePages() {
     query2.bindValue(":username", username);
     query2.bindValue(":password", password);
     if(query2.exec() && query2.next()){
+
         QLabel* welcomeLabel = new QLabel(QString("Welcome, Manager %1!").arg(username));
+        welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
         managerLayout->addWidget(welcomeLabel);
         setupManagerPage();
         logoutButton = new QPushButton("Log out");
@@ -769,6 +882,7 @@ void MainWindow::navigatePages() {
 
         } else if (role == "coach") {
             QLabel* welcomeLabel = new QLabel(QString("Welcome, Coach %1!").arg(username));
+            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
             coachLayout->addWidget(welcomeLabel);
             setupCoachPage();
             logoutButton2 = new QPushButton("Log out");
@@ -784,6 +898,7 @@ void MainWindow::navigatePages() {
         }
         else if(role == "jury") {
             QLabel* welcomeLabel = new QLabel(QString("Welcome, Jury %1!").arg(username));
+            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
             juryLayout->addWidget(welcomeLabel);
             setupJuryPage();
             logoutButton3 = new QPushButton("Log out");
@@ -797,6 +912,7 @@ void MainWindow::navigatePages() {
         }
         else if(role == "player") {
             QLabel* welcomeLabel = new QLabel(QString("Welcome, Player %1!").arg(username));
+            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
             playerLayout->addWidget(welcomeLabel);
             logoutButton4 = new QPushButton("Log out");
             playerLayout->addWidget(logoutButton4);

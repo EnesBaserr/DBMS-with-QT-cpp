@@ -25,10 +25,10 @@ int main(int argc, char *argv[]) {
         "  height: 16px; "  // Set the height of the arrow
         "}"
         "QComboBox QAbstractItemView {"
-        "  background-color: lightyellow; "
+        "  background-color: orange; "
         "  color: black; "
-        "  selection-background-color: darkblue; "
-        "  selection-color: white; "
+        "  selection-background-color: grey; "
+        "  selection-color: blue; "
         "}");
 
 

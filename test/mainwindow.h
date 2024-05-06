@@ -42,6 +42,7 @@ public:
     void showStadiums();
     void setupCoachPage() ;
     void setupManagerPage();
+    void addJury(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality);
     bool checkSomeCondition();  // Example condition checker
     void navigatePages();
     void setupJuryPage();
