@@ -25,10 +25,10 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     db = QSqlDatabase::addDatabase("QMYSQL");
     db.setPort(3306);  // Örnek olarak varsayılan MySQL port numarası
 
-    db.setHostName("localhost");
-    db.setDatabaseName("project3_test");
+    db.setHostName("127.0.0.1");
+    db.setDatabaseName("hw3");
     db.setUserName("root");
-    db.setPassword("admin");
+    db.setPassword("Mysql4052");
 
     db.open();
     if (!db.open()) {
