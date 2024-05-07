@@ -464,9 +464,8 @@ void MainWindow::loadPlayersForTeam(QComboBox* playerBox, QComboBox* positionBox
     QString currentCoachUsername = usernameInput->text();
     QSqlQuery playerQuery;
     playerQuery.prepare(R"(
-SELECT u.username, pp.position_id ,t.coach_username
-    FROM users u
-    INNER JOIN playerpositions pp ON u.username = pp.username
+SELECT DISTINCT u.username, t.coach_username
+FROM users u
     INNER JOIN playerteams pt ON u.username = pt.username
     INNER JOIN teams t ON pt.team_id = t.team_id
 WHERE t.coach_username = :coach_username
@@ -474,30 +473,18 @@ WHERE t.coach_username = :coach_username
     AND t.contract_finish >= CURRENT_DATE()
 )");
     playerQuery.bindValue(":coach_username", currentCoachUsername);
-    if(position ==5){
+    if(position >=0 && position<=5){
 
         positionBox->addItem(QString::number(0));
         positionBox->addItem(QString::number(1));
         positionBox->addItem(QString::number(2));
         positionBox->addItem(QString::number(3));
         positionBox->addItem(QString::number(4));
-
-
     }
-
-
     if (playerQuery.exec()) {
         while (playerQuery.next()) {
-            if (playerQuery.value(1).toInt() == position) {
-                playerBox->addItem(playerQuery.value(0).toString());
-                positionBox->addItem(QString::number(position));
-            }
-            else if(position ==5){
-                playerBox->addItem(playerQuery.value(0).toString());
+            playerBox->addItem(playerQuery.value(0).toString());
 
-
-
-            }
         }
     }
 }
