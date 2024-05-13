@@ -135,6 +135,22 @@ DELIMITER ;
 
 
 
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER prevent_insert_slot_four
+BEFORE INSERT ON matchsessions
+FOR EACH ROW
+BEGIN
+    IF NEW.time_slot = 4 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: Time slot cannot be equal to 4';
+    END IF;
+END$$
+
+DELIMITER ;
+
 
 
 DELIMITER $$
