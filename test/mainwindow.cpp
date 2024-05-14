@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     db.setPort(3306);  // Örnek olarak varsayılan MySQL port numarası
 
     db.setHostName("localhost");
-    db.setDatabaseName("project3_test");
+    db.setDatabaseName("hw3");
     db.setUserName("root");
     db.setPassword("admin");
 
@@ -161,7 +161,7 @@ void MainWindow::setupPlayerPage() {
 
     // Populate the table
     QSqlQuery query;
-    query.prepare("SELECT ss2.played_player_username, p2.surname, p2.height, COUNT(*) FROM sessionsquad ss1 JOIN sessionsquad ss2 ON ss1.session_id = ss2.session_id AND ss1.played_player_username != ss2.played_player_username JOIN users p1 ON ss1.played_player_username = p1.username JOIN users p2 ON ss2.played_player_username = p2.username WHERE ss1.played_player_username = :current_player GROUP BY ss2.played_player_username, p2.surname, p2.height ORDER BY COUNT(*) DESC");
+    query.prepare("SELECT ss2.played_player_username, p2.surname, p2.height, COUNT(*) FROM sessionsquad ss1 JOIN sessionsquad ss2 ON ss1.session_id = ss2.session_id AND ss1.played_player_username != ss2.played_player_username JOIN players p1 ON ss1.played_player_username = p1.username JOIN players p2 ON ss2.played_player_username = p2.username WHERE ss1.played_player_username = :current_player GROUP BY ss2.played_player_username, p2.surname, p2.height ORDER BY COUNT(*) DESC");
     query.bindValue(":current_player", currentPlayer);
 
     if (query.exec()) {
@@ -205,7 +205,7 @@ void MainWindow::setupPlayerPage() {
             JOIN
                 sessionsquad ss2 ON ss1.session_id = ss2.session_id AND ss1.played_player_username != ss2.played_player_username
             JOIN
-                users p ON ss2.played_player_username = p.username
+                players p ON ss2.played_player_username = p.username
             WHERE
                 ss1.played_player_username = :current_player
             GROUP BY
@@ -282,7 +282,7 @@ void MainWindow::setupDateEdit(QDateEdit* dateEdit, const QString& currentCoachU
 }
 
 void MainWindow::loadJuries(QComboBox* comboBox) {
-    QSqlQuery query("SELECT CONCAT(name, ' ', surname) AS full_name FROM users WHERE user_type = 'jury'");
+    QSqlQuery query("SELECT CONCAT(name, ' ', surname) AS full_name FROM jury ");
     while (query.next()) {
         comboBox->addItem(query.value(0).toString());
     }
@@ -311,7 +311,7 @@ void MainWindow::addMatchSession(const QString& teamId, const QDate& date, const
         stadium_id=query2.value(0).toInt();
     }
     QSqlQuery query;
-    query.prepare("INSERT INTO matchsessions (session_id, team_id, date, time_slot, stadium_id, assigned_jury_username) VALUES (:session_id, :team_id, :session_date, :time_slot, :stadium, (SELECT username FROM users WHERE CONCAT(name, ' ', surname) = :jury_name AND user_type='jury'))");
+    query.prepare("INSERT INTO matchsessions (session_id, team_id, date, time_slot, stadium_id, assigned_jury_username) VALUES (:session_id, :team_id, :session_date, :time_slot, :stadium, (SELECT username FROM jury WHERE CONCAT(name, ' ', surname) = :jury_name ))");
     query.bindValue(":session_id", maxSessionId + 1);
     query.bindValue(":team_id", teamId);
     query.bindValue(":session_date", date);
@@ -385,7 +385,7 @@ void MainWindow::setupCoachPage() {
     // -------------------------------------------
 
     QLabel* sessionLabel = new QLabel("Select a Session:");
-     sessionComboBox = new QComboBox();
+    sessionComboBox = new QComboBox();
     loadSessionsForCoach(sessionComboBox); // This will load session IDs managed by the coach
 
     coachPageLayout->addWidget(sessionLabel);
@@ -465,7 +465,9 @@ void MainWindow::loadPlayersForTeam(QComboBox* playerBox, QComboBox* positionBox
     QSqlQuery playerQuery;
     playerQuery.prepare(R"(
 SELECT DISTINCT u.username, t.coach_username
-FROM users u
+
+FROM players u
+
     INNER JOIN playerteams pt ON u.username = pt.username
     INNER JOIN teams t ON pt.team_id = t.team_id
 WHERE t.coach_username = :coach_username
@@ -483,10 +485,13 @@ WHERE t.coach_username = :coach_username
     }
     if (playerQuery.exec()) {
         while (playerQuery.next()) {
-            playerBox->addItem(playerQuery.value(0).toString());
 
-        }
-    }
+            playerBox->addItem(playerQuery.value(0).toString());}
+
+
+}
+
+
 }
 
 void MainWindow::submitSquad(const QString& sessionId) {
@@ -690,8 +695,8 @@ void MainWindow::submitRating(int sessionId, double rating) {
         QMessageBox::critical(this, "Submission Failed", QString("Failed to submit your rating"));
     }
 }
-void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType, const QDate& dob, double height, double weight, const QString& nationality, int position, int selectedTeamId) {
-    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty() ) {
+void MainWindow::addPlayer(const QString& username, const QString& password, const QString& name, const QString& surname,  const QDate& dob, double height, double weight, int position, int selectedTeamId) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty()  ) {
         QMessageBox::critical(this, "Input Error", "All fields must be filled");
         return;
     }
@@ -706,19 +711,19 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
 
     QSqlQuery query;
     query.prepare(R"(
-        INSERT INTO users (username, password, name, surname, user_type, date_of_birth, height, weight, nationality)
-        VALUES (:username, :password, :name, :surname, :userType, :dob, :height, :weight, :nationality)
+        INSERT INTO players (username, password, name, surname,  date_of_birth, height, weight)
+        VALUES (:username, :password, :name, :surname,  :dob, :height, :weight)
     )");
 
     query.bindValue(":username", username);
     query.bindValue(":password", password);
     query.bindValue(":name", name);
     query.bindValue(":surname", surname);
-    query.bindValue(":userType", userType);
+
     query.bindValue(":dob", dob);
     query.bindValue(":height", height);
     query.bindValue(":weight", weight);
-    query.bindValue(":nationality", nationality);
+
     if (!query.exec()) {
         QMessageBox::critical(this, "Database Error", "Failed to insert player " );
         db.rollback();
@@ -776,8 +781,8 @@ void MainWindow::addPlayer(const QString& username, const QString& password, con
 }
 
 
-void MainWindow::addJury(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
-    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+void MainWindow::addJury(const QString& username, const QString& password, const QString& name, const QString& surname,   const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty()  || nationality.isEmpty()) {
         QMessageBox::critical(this, "Input Error", "All fields must be filled");
         return;
     }
@@ -788,15 +793,15 @@ void MainWindow::addJury(const QString& username, const QString& password, const
 
     QSqlQuery query;
     query.prepare(R"(
-        INSERT INTO users (username, password, name, surname, user_type,  nationality)
-        VALUES (:username, :password, :name, :surname, :userType, :nationality)
+        INSERT INTO jury (username, password, name, surname,   nationality)
+        VALUES (:username, :password, :name, :surname, :nationality)
     )");
 
     query.bindValue(":username", username);
     query.bindValue(":password", password);
     query.bindValue(":name", name);
     query.bindValue(":surname", surname);
-    query.bindValue(":userType", userType);
+
 
 
     query.bindValue(":nationality", nationality);
@@ -853,16 +858,13 @@ void MainWindow::setupManagerPage() {
     playerSurnameInput->setStyleSheet(inputStyle2);
     managerPageLayout->addWidget(playerSurnameInput);
 
-    QLineEdit* playerNationalityInput = new QLineEdit();
-    playerNationalityInput->setPlaceholderText("Enter player nationality");
-    playerNationalityInput->setFont(inputFont2);
-    playerNationalityInput->setStyleSheet(inputStyle2);
-    managerPageLayout->addWidget(playerNationalityInput);
+
 
     // Additional fields specific to players
     QDateEdit* playerDobEdit = new QDateEdit();
     playerDobEdit->setCalendarPopup(true);
     playerDobEdit->setDate(QDate::currentDate());
+    playerDobEdit->setMaximumDate(QDate::currentDate());
     managerPageLayout->addWidget(playerDobEdit);
 
     QLineEdit* playerHeightInput = new QLineEdit();
@@ -936,11 +938,11 @@ void MainWindow::setupManagerPage() {
     managerPageLayout->addWidget(submitPlayerButton);
 
     // Connect the button's clicked signal to the slot that handles player creation
-    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerNationalityInput, playerDobEdit, playerHeightInput, playerWeightInput, playerPositionInput, playerTeamInput]() {
+    connect(submitPlayerButton, &QPushButton::clicked, [this, playerUsernameInput, playerPasswordInput, playerNameInput, playerSurnameInput, playerDobEdit, playerHeightInput, playerWeightInput, playerPositionInput, playerTeamInput]() {
         QString selectedTeamIdName = playerTeamInput->currentText();
         QStringList teamIdNameList = selectedTeamIdName.split(" - ");
         int selectedTeamId = teamIdNameList[0].toInt();
-        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(), "player", playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(), playerNationalityInput->text(), playerPositionInput->currentText().toInt(), selectedTeamId);
+        addPlayer(playerUsernameInput->text(), playerPasswordInput->text(), playerNameInput->text(), playerSurnameInput->text(),  playerDobEdit->date(), playerHeightInput->text().toDouble(), playerWeightInput->text().toDouble(),  playerPositionInput->currentText().toInt(), selectedTeamId);
     });
 
     QLabel* addCoachLabel = new QLabel("Add New Coach:");
@@ -1008,7 +1010,7 @@ void MainWindow::setupManagerPage() {
 
     // Connect the button's clicked signal to the slot that handles coach creation
     connect(submitCoachButton, &QPushButton::clicked, [this, coachUsernameInput, coachPasswordInput, coachNameInput, coachSurnameInput, coachNationalityInput]() {
-        addCoach(coachUsernameInput->text(), coachPasswordInput->text(), coachNameInput->text(), coachSurnameInput->text(), "coach" , coachNationalityInput->text());
+        addCoach(coachUsernameInput->text(), coachPasswordInput->text(), coachNameInput->text(), coachSurnameInput->text(),  coachNationalityInput->text());
     });
 
     QFont inputFont("Arial", 12);
@@ -1089,14 +1091,14 @@ void MainWindow::setupManagerPage() {
 
     // Connect the button's clicked signal to the slot that handles jury creation
     connect(submitJuryButton, &QPushButton::clicked, [this, usernameInput, passwordInput, nameInput, surnameInput, nationalityInput]() {
-        addJury(usernameInput->text(), passwordInput->text(), nameInput->text(), surnameInput->text(), "jury",  nationalityInput->text());
+        addJury(usernameInput->text(), passwordInput->text(), nameInput->text(), surnameInput->text(),   nationalityInput->text());
     });
     QLabel* instructionsLabel = new QLabel("Select a stadium and update its name:");
     instructionsLabel->setFont(QFont("Arial", 14, QFont::Bold));
     managerPageLayout->addWidget(instructionsLabel);
 
     // ComboBox to display stadium names
-    QComboBox* stadiumComboBox = new QComboBox();
+     stadiumComboBox = new QComboBox();
     QSqlQuery query;
     if (query.exec("SELECT stadium_name FROM stadiums")) {
         while (query.next()) {
@@ -1139,8 +1141,8 @@ void MainWindow::setupManagerPage() {
     scrollArea->setWidgetResizable(true);  // Make the scroll area content
     scrollArea->setWidget(managerPageContent);
     managerLayout->addWidget(scrollArea);
-    connect(updateButton, &QPushButton::clicked, [this, stadiumComboBox, newNameInput]() {
-        QString oldName = stadiumComboBox->currentText();
+    connect(updateButton, &QPushButton::clicked, [this, newNameInput]() {
+        QString oldName = this->stadiumComboBox->currentText();
         QString newName = newNameInput->text();
         if (newName.trimmed().isEmpty()) {
             QMessageBox::warning(this, "Input Error", "New stadium name cannot be empty.");
@@ -1149,8 +1151,8 @@ void MainWindow::setupManagerPage() {
         updateStadiumName(oldName, newName);
     });
 }
-void MainWindow::addCoach(const QString& username, const QString& password, const QString& name, const QString& surname, const QString& userType,  const QString& nationality) {
-    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() || userType.isEmpty() || nationality.isEmpty()) {
+void MainWindow::addCoach(const QString& username, const QString& password, const QString& name, const QString& surname,  const QString& nationality) {
+    if (username.isEmpty() || password.isEmpty() || name.isEmpty() || surname.isEmpty() ||  nationality.isEmpty()) {
         QMessageBox::critical(this, "Input Error", "All fields must be filled");
         return;
     }
@@ -1162,15 +1164,15 @@ void MainWindow::addCoach(const QString& username, const QString& password, cons
 
     QSqlQuery query;
     query.prepare(R"(
-        INSERT INTO users (username, password, name, surname, user_type,  nationality)
-        VALUES (:username, :password, :name, :surname, :userType, :nationality)
+        INSERT INTO coaches (username, password, name, surname,   nationality)
+        VALUES (:username, :password, :name, :surname,  :nationality)
     )");
 
     query.bindValue(":username", username);
     query.bindValue(":password", password);
     query.bindValue(":name", name);
     query.bindValue(":surname", surname);
-    query.bindValue(":userType", userType);
+
 
     query.bindValue(":nationality", nationality);
 
@@ -1187,11 +1189,19 @@ void MainWindow::addCoach(const QString& username, const QString& password, cons
 
 void MainWindow::updateStadiumName(const QString& oldName, const QString& newName) {
     QSqlQuery query;
+
     query.prepare("UPDATE stadiums SET stadium_name = :newName WHERE stadium_name = :oldName");
     query.bindValue(":newName", newName);
     query.bindValue(":oldName", oldName);
     if (query.exec()) {
         QMessageBox::information(this, "Update Successful", "Stadium name updated successfully.");
+        stadiumComboBox->clear();
+        QSqlQuery query;
+        if (query.exec("SELECT stadium_name FROM stadiums")) {
+            while (query.next()) {
+                stadiumComboBox->addItem(query.value(0).toString());
+            }
+        }
     } else {
         QMessageBox::critical(this, "Update Failed", "Failed to update the stadium name.");
     }
@@ -1199,14 +1209,23 @@ void MainWindow::updateStadiumName(const QString& oldName, const QString& newNam
 void MainWindow::navigatePages() {
     QString username = usernameInput->text();
     QString password = passwordInput->text();
-    QSqlQuery query;
-    query.prepare("SELECT user_type FROM users WHERE binary username = :username AND binary password = :password");
-    query.bindValue(":username", username);
-    query.bindValue(":password", password);
+
     QSqlQuery query2;
     query2.prepare("SELECT username FROM database_managers WHERE binary username = :username AND binary password = :password");
     query2.bindValue(":username", username);
     query2.bindValue(":password", password);
+    QSqlQuery query3;
+    query3.prepare("SELECT username FROM players WHERE binary username = :username AND binary password = :password");
+    query3.bindValue(":username", username);
+    query3.bindValue(":password", password);
+    QSqlQuery query4;
+    query4.prepare("SELECT username FROM coaches WHERE binary username = :username AND binary password = :password");
+    query4.bindValue(":username", username);
+    query4.bindValue(":password", password);
+    QSqlQuery query5;
+    query5.prepare("SELECT username FROM jury WHERE binary username = :username AND binary password = :password");
+    query5.bindValue(":username", username);
+    query5.bindValue(":password", password);
     if(query2.exec() && query2.next()){
 
         QLabel* welcomeLabel = new QLabel(QString("Welcome, Manager %1!").arg(username));
@@ -1239,110 +1258,105 @@ void MainWindow::navigatePages() {
         stackedWidget->setCurrentIndex(1);  // Navigate to Welcome Manager page
     }
 
-    else if(query.exec() && query.next()){
-        QString role = query.value(0).toString();
-        if (role == "manager") {
+    else if(query3.exec() && query3.next()){
+        QLabel* welcomeLabel = new QLabel(QString("Welcome, Player %1!").arg(username));
+        welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
+        playerLayout->addWidget(welcomeLabel);
+        logoutButton4 = new QPushButton("Log out");
+        logoutButton4->setStyleSheet(
+            "QPushButton {"
+            "   background-color: grey;"
+            "   color: white;"
+            "   border: 2px solid #2F80ED;"
+            "   border-radius: 10px;"
+            "   padding: 5px;"
+            "   font-size: 16px;"
+            "   font-weight: bold;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
+            "}"
+            "QPushButton:pressed {"
+            "   background-color: #2F80ED;"
+            "}"
+            );
+        playerLayout->addWidget(logoutButton4);
+        setupPlayerPage();
+        connect(logoutButton4, &QPushButton::clicked, [this]() {
+            clearLayout(playerLayout);
+            stackedWidget->setCurrentIndex(0);  // Navigate back to login page
+        });
+        stackedWidget->setCurrentIndex(4);  // Navigate to Welcome player pag
+    }
+
+    else if(query4.exec() && query4.next()){
+        QLabel* welcomeLabel = new QLabel(QString("Welcome, Coach %1!").arg(username));
+        welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
+        coachLayout->addWidget(welcomeLabel);
+        setupCoachPage();
+        logoutButton2 = new QPushButton("Log out");
+        logoutButton2->setStyleSheet(
+            "QPushButton {"
+            "   background-color: grey;"
+            "   color: white;"
+            "   border: 2px solid #2F80ED;"
+            "   border-radius: 10px;"
+            "   padding: 5px;"
+            "   font-size: 16px;"
+            "   font-weight: bold;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
+            "}"
+            "QPushButton:pressed {"
+            "   background-color: #2F80ED;"
+            "}"
+            );
+
+        coachLayout->addWidget(logoutButton2);
+        connect(logoutButton2, &QPushButton::clicked, [this]() {
+            clearLayout(coachLayout);
+            stackedWidget->setCurrentIndex(0);  // Navigate back to login page
+        });
+        stackedWidget->setCurrentIndex(2);  // Navigate to Welcome Coach page
+    }
 
 
-
-        } else if (role == "coach") {
-            QLabel* welcomeLabel = new QLabel(QString("Welcome, Coach %1!").arg(username));
-            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
-            coachLayout->addWidget(welcomeLabel);
-            setupCoachPage();
-            logoutButton2 = new QPushButton("Log out");
-            logoutButton2->setStyleSheet(
-                "QPushButton {"
-                "   background-color: grey;"
-                "   color: white;"
-                "   border: 2px solid #2F80ED;"
-                "   border-radius: 10px;"
-                "   padding: 5px;"
-                "   font-size: 16px;"
-                "   font-weight: bold;"
-                "}"
-                "QPushButton:hover {"
-                "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
-                "}"
-                "QPushButton:pressed {"
-                "   background-color: #2F80ED;"
-                "}"
-                );
-
-            coachLayout->addWidget(logoutButton2);
-            connect(logoutButton2, &QPushButton::clicked, [this]() {
-                clearLayout(coachLayout);
-                stackedWidget->setCurrentIndex(0);  // Navigate back to login page
-            });
-            stackedWidget->setCurrentIndex(2);  // Navigate to Welcome Coach page
-
-
-        }
-        else if(role == "jury") {
-            QLabel* welcomeLabel = new QLabel(QString("Welcome, Jury %1!").arg(username));
-            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
-            juryLayout->addWidget(welcomeLabel);
-            setupJuryPage();
-            logoutButton3 = new QPushButton("Log out");
-            logoutButton3->setStyleSheet(
-                "QPushButton {"
-                "   background-color: grey;"
-                "   color: white;"
-                "   border: 2px solid #2F80ED;"
-                "   border-radius: 10px;"
-                "   padding: 5px;"
-                "   font-size: 16px;"
-                "   font-weight: bold;"
-                "}"
-                "QPushButton:hover {"
-                "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
-                "}"
-                "QPushButton:pressed {"
-                "   background-color: #2F80ED;"
-                "}"
-                );
-            juryLayout->addWidget(logoutButton3);
-            connect(logoutButton3, &QPushButton::clicked, [this]() {
-                clearLayout(juryLayout);
-                stackedWidget->setCurrentIndex(0);  // Navigate back to login page
-            });
-            stackedWidget->setCurrentIndex(3);  // Navigate to Welcome Coach pag
-
-        }
-        else if(role == "player") {
-            QLabel* welcomeLabel = new QLabel(QString("Welcome, Player %1!").arg(username));
-            welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
-            playerLayout->addWidget(welcomeLabel);
-            logoutButton4 = new QPushButton("Log out");
-            logoutButton4->setStyleSheet(
-                "QPushButton {"
-                "   background-color: grey;"
-                "   color: white;"
-                "   border: 2px solid #2F80ED;"
-                "   border-radius: 10px;"
-                "   padding: 5px;"
-                "   font-size: 16px;"
-                "   font-weight: bold;"
-                "}"
-                "QPushButton:hover {"
-                "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
-                "}"
-                "QPushButton:pressed {"
-                "   background-color: #2F80ED;"
-                "}"
-                );
-            playerLayout->addWidget(logoutButton4);
-            setupPlayerPage();
-            connect(logoutButton4, &QPushButton::clicked, [this]() {
-                clearLayout(playerLayout);
-                stackedWidget->setCurrentIndex(0);  // Navigate back to login page
-            });
-            stackedWidget->setCurrentIndex(4);  // Navigate to Welcome Coach pag
-
-        }
+    else if(query5.exec() && query5.next()) {
+        QLabel* welcomeLabel = new QLabel(QString("Welcome, Jury %1!").arg(username));
+        welcomeLabel->setFont(QFont("Arial", 14, QFont::Bold));
+        juryLayout->addWidget(welcomeLabel);
+        setupJuryPage();
+        logoutButton3 = new QPushButton("Log out");
+        logoutButton3->setStyleSheet(
+            "QPushButton {"
+            "   background-color: grey;"
+            "   color: white;"
+            "   border: 2px solid #2F80ED;"
+            "   border-radius: 10px;"
+            "   padding: 5px;"
+            "   font-size: 16px;"
+            "   font-weight: bold;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:4, y2:0, stop:0 grey, stop:1 white);"
+            "}"
+            "QPushButton:pressed {"
+            "   background-color: #2F80ED;"
+            "}"
+            );
+        juryLayout->addWidget(logoutButton3);
+        connect(logoutButton3, &QPushButton::clicked, [this]() {
+            clearLayout(juryLayout);
+            stackedWidget->setCurrentIndex(0);  // Navigate back to login page
+        });
+        stackedWidget->setCurrentIndex(3);  // Navigate to Welcome Coach pag
 
     }
     else{
         QMessageBox::warning(this, "Login Failed", "Incorrect username or password.");
     }
+
+
+
 }
