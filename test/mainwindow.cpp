@@ -465,7 +465,9 @@ void MainWindow::loadPlayersForTeam(QComboBox* playerBox, QComboBox* positionBox
     QSqlQuery playerQuery;
     playerQuery.prepare(R"(
 SELECT DISTINCT u.username, t.coach_username
+
 FROM players u
+
     INNER JOIN playerteams pt ON u.username = pt.username
     INNER JOIN teams t ON pt.team_id = t.team_id
 WHERE t.coach_username = :coach_username
@@ -483,10 +485,12 @@ WHERE t.coach_username = :coach_username
     }
     if (playerQuery.exec()) {
         while (playerQuery.next()) {
+
             playerBox->addItem(playerQuery.value(0).toString());}
 
 
 }
+
 
 }
 
